@@ -6,26 +6,26 @@ module.exports = {
   mode: "development",
   devtool: "inline-source-map",
   entry: {
-    app: "./src/index.ts"
+    app: "./src/index.ts",
   },
   module: {
     rules: [
       {
         test: /\.tsx?$/,
         use: "ts-loader",
-        exclude: /node_modules/
-      }
-    ]
+        exclude: /node_modules/,
+      },
+    ],
   },
-  plugins: [
-    new CleanWebpackPlugin(),
-    new HtmlWebpackPlugin({ template: "./src/index.template.html" })
-  ],
+  resolve: {
+    extensions: [".js", ".ts"],
+  },
+  plugins: [new CleanWebpackPlugin(), new HtmlWebpackPlugin({ template: "./src/index.template.html" })],
   devServer: {
-    contentBase: "./dist"
+    contentBase: "./dist",
   },
   output: {
     filename: "[name].js",
-    path: path.resolve(__dirname, "dist")
-  }
+    path: path.resolve(__dirname, "dist"),
+  },
 };
