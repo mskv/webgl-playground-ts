@@ -1,6 +1,6 @@
-import { Mat4, mat4product, Vec4, vec4transform } from "./math";
+import { Mat4, mat4EulerRotation, mat4Format, mat4Product, Vec3, Vec4, vec4Transform } from "./math";
 
-test("mat4product", () => {
+test("mat4Product", () => {
   // 5, 7, 9, 10,
   // 2, 3, 3, 8,
   // 8, 10, 2, 3,
@@ -17,12 +17,12 @@ test("mat4product", () => {
   // 105, 169, 128, 169
   const expected = new Mat4([210, 93, 171, 105, 267, 149, 146, 169, 236, 104, 172, 128, 271, 149, 268, 169]);
 
-  const product = mat4product(m1, m2);
+  const product = mat4Product(m1, m2);
 
   expect(product).toEqual(expected);
 });
 
-test("vec4trasform", () => {
+test("vec4Trasform", () => {
   // 5, 7, 9, 10,
   // 2, 3, 3, 8,
   // 8, 10, 2, 3,
@@ -39,7 +39,32 @@ test("vec4trasform", () => {
   // 105
   const expected = new Vec4(210, 93, 171, 105);
 
-  const transformed = vec4transform(m, v);
+  const transformed = vec4Transform(m, v);
 
   expect(transformed).toEqual(expected);
+});
+
+test("mat4EulerRotation", () => {
+  const euler = new Vec3(1.57, 5.12, 9.57);
+  const expected = new Mat4([
+    -0.39224,
+    0.90829,
+    -0.14544,
+    0,
+    0.05737,
+    -0.13364,
+    -0.98937,
+    0,
+    -0.91807,
+    -0.39642,
+    0.00032,
+    0,
+    0,
+    0,
+    0,
+    1,
+  ]);
+  const matrix = mat4EulerRotation(euler);
+
+  expect(mat4Format(matrix)).toEqual(mat4Format(expected));
 });
