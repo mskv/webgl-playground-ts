@@ -110,7 +110,7 @@ export const mat4Transpose = (m: Mat4): Mat4 => {
   ]);
 };
 
-export const mat4EulerRotation = (euler: Vec3): Mat4 => {
+export const mat4FromEulerRotation = (euler: Vec3): Mat4 => {
   const x = euler.x,
     y = euler.y,
     z = euler.z,
@@ -139,4 +139,20 @@ export const mat4EulerRotation = (euler: Vec3): Mat4 => {
     0,
     1,
   ]);
+};
+
+export const mat4FromTranslationVec = (translation: Vec3): Mat4 => {
+  const x = translation.x,
+    y = translation.y,
+    z = translation.z;
+
+  return new Mat4([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, x, y, z, 1]);
+};
+
+export const mat4FromScaleVec = (scale: Vec3): Mat4 => {
+  const x = scale.x,
+    y = scale.y,
+    z = scale.z;
+
+  return new Mat4([x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1]);
 };
