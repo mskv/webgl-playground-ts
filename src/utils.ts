@@ -1,5 +1,5 @@
 export const formatMultiline = (str: string) => {
-  const trimAroundRegex = /^(?:\s*\n)?(.*?)\s*$/gs;
+  const trimAroundRegex = /^(?:\s*\n)?((?:.|\n)*?)\s*$/g;
   const leadingWhitespaceRegex = /^([\t ]*)(?:\S.*)$/gm;
 
   const trimAroundMatch = trimAroundRegex.exec(str);

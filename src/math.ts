@@ -12,7 +12,7 @@ export const vec3Format = (v: Vec3): string =>
       ${v.y.toFixed(5)},
       ${v.z.toFixed(5)} ]
 `);
-export const vec3FromArray = (arr: number[]): Vec3 => new Vec3(arr[0], arr[1], arr[2]);
+export const vec3FromArray = (arr: number[]): Vec3 => vec3(arr[0], arr[1], arr[2]);
 export const vec3ToArray = (v: Vec3): number[] => [v.x, v.y, v.z];
 export const vec3Dot = (v1: Vec3, v2: Vec3): number => v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
 export const vec3Transform = (m: Mat4, v: Vec3): Vec3 => {
@@ -47,7 +47,7 @@ export const vec4Format = (v: Vec4): string =>
       ${v.z.toFixed(5)},
       ${v.w.toFixed(5)} ]
 `);
-export const vec4FromArray = (arr: number[]): Vec4 => new Vec4(arr[0], arr[1], arr[2], arr[3]);
+export const vec4FromArray = (arr: number[]): Vec4 => vec4(arr[0], arr[1], arr[2], arr[3]);
 export const vec4ToArray = (v: Vec4): number[] => [v.x, v.y, v.z, v.w];
 export const vec4Dot = (v1: Vec4, v2: Vec4): number => v1.x * v2.x + v1.y * v2.y + v1.z * v2.z + v1.w * v2.w;
 export const vec4Transform = (m: Mat4, v: Vec4): Vec4 => {
@@ -104,7 +104,7 @@ export const mat4Product = (m1: Mat4, m2: Mat4): Mat4 => {
     }
   }
 
-  return new Mat4(resultElements);
+  return mat4(resultElements);
 };
 export const mat4Transpose = (m: Mat4): Mat4 => {
   const e = m.elements;
@@ -123,6 +123,7 @@ export const mat4FromEulerRotation = (euler: Vec3): Mat4 => {
     sinZ = Math.sin(z),
     cosZ = Math.cos(z);
 
+  // prettier-ignore
   return mat4([
     cosY * cosZ,
     cosX * sinZ + cosZ * sinX * sinY,
@@ -158,3 +159,54 @@ export const mat4FromScaleVec = (scale: Vec3): Mat4 => {
 
   return mat4([x, 0, 0, 0, 0, y, 0, 0, 0, 0, z, 0, 0, 0, 0, 1]);
 };
+
+export const mat4Determinant = (m: Mat4): number => {
+  // https://www.euclideanspace.com/maths/algebra/matrix/functions/determinant/fourD/index.htm
+  const e = m.elements;
+
+  // prettier-ignore
+  return e[12] * e[9] * e[6] * e[3] - e[8] * e[13] * e[6] * e[3] -
+    e[12] * e[5] * e[10] * e[3] + e[4] * e[13] * e[10] * e[3] +
+    e[8] * e[5] * e[14] * e[3] - e[4] * e[9] * e[14] * e[3] -
+    e[12] * e[9] * e[2] * e[7] + e[8] * e[13] * e[2] * e[7] +
+    e[12] * e[1] * e[10] * e[7] - e[0] * e[13] * e[10] * e[7] -
+    e[8] * e[1] * e[14] * e[7] + e[0] * e[9] * e[14] * e[7] +
+    e[12] * e[5] * e[2] * e[11] - e[4] * e[13] * e[2] * e[11] -
+    e[12] * e[1] * e[6] * e[11] + e[0] * e[13] * e[6] * e[11] +
+    e[4] * e[1] * e[14] * e[11] - e[0] * e[5] * e[14] * e[11] -
+    e[8] * e[5] * e[2] * e[15] + e[4] * e[9] * e[2] * e[15] +
+    e[8] * e[1] * e[6] * e[15] - e[0] * e[9] * e[6] * e[15] -
+    e[4] * e[1] * e[10] * e[15] + e[0] * e[5] * e[10] * e[15];
+};
+
+export const mat4Inverse = (m: Mat4): Mat4 => {
+  // http://www.euclideanspace.com/maths/algebra/matrix/functions/inverse/fourD/index.htm
+  const e = m.elements,
+    det = mat4Determinant(m),
+    detInv = 1 / det;
+
+  // tslint:disable:max-line-length
+  // prettier-ignore
+  return mat4([
+    e[9] * e[14] * e[7] - e[13] * e[10] * e[7] + e[13] * e[6] * e[11] - e[5] * e[14] * e[11] - e[9] * e[6] * e[15] + e[5] * e[10] * e[15] * detInv,
+    e[13] * e[10] * e[3] - e[9] * e[14] * e[3] - e[13] * e[2] * e[11] + e[1] * e[14] * e[11] + e[9] * e[2] * e[15] - e[1] * e[10] * e[15] * detInv,
+    e[5] * e[14] * e[3] - e[13] * e[6] * e[3] + e[13] * e[2] * e[7] - e[1] * e[14] * e[7] - e[5] * e[2] * e[15] + e[1] * e[6] * e[15] * detInv,
+    e[9] * e[6] * e[3] - e[5] * e[10] * e[3] - e[9] * e[2] * e[7] + e[1] * e[10] * e[7] + e[5] * e[2] * e[11] - e[1] * e[6] * e[11] * detInv,
+    e[12] * e[10] * e[7] - e[8] * e[14] * e[7] - e[12] * e[6] * e[11] + e[4] * e[14] * e[11] + e[8] * e[6] * e[15] - e[4] * e[10] * e[15] * detInv,
+    e[8] * e[14] * e[3] - e[12] * e[10] * e[3] + e[12] * e[2] * e[11] - e[0] * e[14] * e[11] - e[8] * e[2] * e[15] + e[0] * e[10] * e[15] * detInv,
+    e[12] * e[6] * e[3] - e[4] * e[14] * e[3] - e[12] * e[2] * e[7] + e[0] * e[14] * e[7] + e[4] * e[2] * e[15] - e[0] * e[6] * e[15] * detInv,
+    e[4] * e[10] * e[3] - e[8] * e[6] * e[3] + e[8] * e[2] * e[7] - e[0] * e[10] * e[7] - e[4] * e[2] * e[11] + e[0] * e[6] * e[11] * detInv,
+    e[8] * e[13] * e[7] - e[12] * e[9] * e[7] + e[12] * e[5] * e[11] - e[4] * e[13] * e[11] - e[8] * e[5] * e[15] + e[4] * e[9] * e[15] * detInv,
+    e[12] * e[9] * e[3] - e[8] * e[13] * e[3] - e[12] * e[1] * e[11] + e[0] * e[13] * e[11] + e[8] * e[1] * e[15] - e[0] * e[9] * e[15] * detInv,
+    e[4] * e[13] * e[3] - e[12] * e[5] * e[3] + e[12] * e[1] * e[7] - e[0] * e[13] * e[7] - e[4] * e[1] * e[15] + e[0] * e[5] * e[15] * detInv,
+    e[8] * e[5] * e[3] - e[4] * e[9] * e[3] - e[8] * e[1] * e[7] + e[0] * e[9] * e[7] + e[4] * e[1] * e[11] - e[0] * e[5] * e[11] * detInv,
+    e[12] * e[9] * e[6] - e[8] * e[13] * e[6] - e[12] * e[5] * e[10] + e[4] * e[13] * e[10] + e[8] * e[5] * e[14] - e[4] * e[9] * e[14] * detInv,
+    e[8] * e[13] * e[2] - e[12] * e[9] * e[2] + e[12] * e[1] * e[10] - e[0] * e[13] * e[10] - e[8] * e[1] * e[14] + e[0] * e[9] * e[14] * detInv,
+    e[12] * e[5] * e[2] - e[4] * e[13] * e[2] - e[12] * e[1] * e[6] + e[0] * e[13] * e[6] + e[4] * e[1] * e[14] - e[0] * e[5] * e[14] * detInv,
+    e[4] * e[9] * e[2] - e[8] * e[5] * e[2] + e[8] * e[1] * e[6] - e[0] * e[9] * e[6] - e[4] * e[1] * e[10] + e[0] * e[5] * e[10] * detInv,
+  ]);
+  // tslint:enable:max-line-length
+};
+
+// Misc
+export const radFromDeg = (deg: number): number => (deg / 180) * Math.PI;
