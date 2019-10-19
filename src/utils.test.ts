@@ -1,6 +1,4 @@
-import { bisect } from "./utils";
-
-const compareNumbers = (n1: number, n2: number) => (n1 > n2 ? 1 : n1 < n2 ? -1 : 0);
+import { bisect, compareNumbers } from "./utils";
 
 describe("bisect", () => {
   test("when no items", () => {
