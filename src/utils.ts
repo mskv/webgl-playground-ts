@@ -70,3 +70,13 @@ export const bisect = <T>(
 };
 
 export const compareNumbers = (n1: number, n2: number) => (n1 > n2 ? 1 : n1 < n2 ? -1 : 0);
+
+export const defined = <T>(value: T): value is NonNullable<T> => value !== null && value !== undefined;
+
+export const assert = <T>(value: T, msg: string = "oups"): value is NonNullable<T> => {
+  if (defined(value)) {
+    return true;
+  } else {
+    throw Error(msg);
+  }
+};

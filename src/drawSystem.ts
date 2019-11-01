@@ -1,8 +1,16 @@
-import { mesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
-import { EntityId, nextId } from "./entity";
+import {
+  cameraEntity,
+  mesh,
+  perspectiveProjection,
+  perspectiveProjectionMatrix,
+  simpleObjectEntity,
+  transform,
+  transformMatrix,
+} from "./3d";
+import { assertKind, EntityId, EntityKind, nextId, ofKindCurr } from "./entity";
 import { mat4Inverse, mat4Product, radFromDeg, vec3 } from "./math";
 import { State } from "./state";
-import { storageGetExpect, storageSetMut, storageVals } from "./storage";
+import { assert, defined } from "./utils";
 
 const vertexShaderSource = `#version 300 es
 uniform mat4 u_projection;
@@ -25,7 +33,6 @@ void main() {
 `;
 
 export type DrawSystem = {
-  canvas: HTMLCanvasElement;
   gl: WebGL2RenderingContext;
   program: WebGLProgram;
   activeCameraId: EntityId | null;
@@ -42,7 +49,6 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
   const program = createProgram(gl, vertexShader, fragmentShader);
 
   return {
-    canvas,
     gl,
     program,
     activeCameraId: null,
@@ -51,7 +57,7 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
 
 export const drawSystemRun = (state: State): void => {
   const gl = state.drawSystem.gl,
-    canvas = state.drawSystem.canvas,
+    canvas = gl.canvas as HTMLCanvasElement,
     program = state.drawSystem.program;
 
   resizeCanvas(canvas);
@@ -64,46 +70,36 @@ export const drawSystemRun = (state: State): void => {
   const uProjectionLocation = gl.getUniformLocation(program, "u_projection");
   const inPositionLocation = gl.getAttribLocation(program, "in_position");
 
-  if (state.drawSystem.activeCameraId === null) {
+  if (!defined(state.drawSystem.activeCameraId)) {
     return;
   }
 
-  const activeCameraTransform = storageGetExpect(state.store.transforms, state.drawSystem.activeCameraId);
-  const worldToCameraSpace = mat4Inverse(transformMatrix(activeCameraTransform));
+  const activeCameraEntity = state.entities.get(state.drawSystem.activeCameraId);
+  if (!assert(activeCameraEntity, "Missing active camera") || !assertKind(EntityKind.Camera, activeCameraEntity)) {
+    return;
+  }
 
-  const activeCameraProjection = storageGetExpect(state.store.perspectiveProjections, state.drawSystem.activeCameraId);
-  const worldToProjectionSpace = mat4Product(perspectiveProjectionMatrix(activeCameraProjection), worldToCameraSpace);
+  const worldToCameraSpace = mat4Inverse(transformMatrix(activeCameraEntity.transform));
+  const worldToProjectionSpace = mat4Product(
+    perspectiveProjectionMatrix(activeCameraEntity.projection),
+    worldToCameraSpace,
+  );
 
-  for (const [entryId, mesh] of storageVals(state.store.meshes)) {
-    const meshTransform = storageGetExpect(state.store.transforms, entryId);
+  const entities = Array.from(state.entities.values());
+  const simpleObjects = entities.filter(ofKindCurr(EntityKind.SimpleObject));
 
+  for (const simpleObject of simpleObjects) {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(mesh.geometry), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.geometry), gl.STATIC_DRAW);
     gl.enableVertexAttribArray(inPositionLocation);
     gl.vertexAttribPointer(inPositionLocation, 3, gl.FLOAT, false, 0, 0);
 
-    const meshToWorldSpace = transformMatrix(meshTransform);
+    const meshToWorldSpace = transformMatrix(simpleObject.transform);
     const meshToProjectionSpace = mat4Product(worldToProjectionSpace, meshToWorldSpace);
     gl.uniformMatrix4fv(uProjectionLocation, false, meshToProjectionSpace.elements);
 
     gl.drawArrays(gl.TRIANGLES, 0, 16 * 6);
   }
-};
-
-export const initMainCameraMut = (state: State): void => {
-  const gl = state.drawSystem.gl;
-
-  const mainCameraId = nextId();
-  const mainCameraProjection = perspectiveProjection(0.1, 50000, radFromDeg(90), gl.canvas.width / gl.canvas.height);
-  const mainCameraTransform = transform(
-    vec3(0, 0, 0),
-    vec3(radFromDeg(0), radFromDeg(0), radFromDeg(0)),
-    vec3(1, 1, 1),
-  );
-
-  state.drawSystem.activeCameraId = mainCameraId;
-  storageSetMut(state.store.perspectiveProjections, mainCameraId, mainCameraProjection);
-  storageSetMut(state.store.transforms, mainCameraId, mainCameraTransform);
 };
 
 const createProgram = (
@@ -159,143 +155,154 @@ const resizeCanvas = (canvas: HTMLCanvasElement): void => {
   }
 };
 
-export const initBasicObjMut = (state: State): void => {
-  const basicObjId = nextId();
-  // prettier-ignore
-  const basicObjMesh = mesh([
-    // left column front
-    0, 0, 0,
-    30, 0, 0,
-    0, 150, 0,
-    0, 150, 0,
-    30, 0, 0,
-    30, 150, 0,
+export const initMainCameraMut = (state: State): void => {
+  const gl = state.drawSystem.gl;
 
-    // top rung front
-    30, 0, 0,
-    100, 0, 0,
-    30, 30, 0,
-    30, 30, 0,
-    100, 0, 0,
-    100, 30, 0,
-
-    // middle rung front
-    30, 60, 0,
-    67, 60, 0,
-    30, 90, 0,
-    30, 90, 0,
-    67, 60, 0,
-    67, 90, 0,
-
-    // left column back
-    0, 0, 30,
-    30, 0, 30,
-    0, 150, 30,
-    0, 150, 30,
-    30, 0, 30,
-    30, 150, 30,
-
-    // top rung back
-    30, 0, 30,
-    100, 0, 30,
-    30, 30, 30,
-    30, 30, 30,
-    100, 0, 30,
-    100, 30, 30,
-
-    // middle rung back
-    30, 60, 30,
-    67, 60, 30,
-    30, 90, 30,
-    30, 90, 30,
-    67, 60, 30,
-    67, 90, 30,
-
-    // top
-    0, 0, 0,
-    100, 0, 0,
-    100, 0, 30,
-    0, 0, 0,
-    100, 0, 30,
-    0, 0, 30,
-
-    // top rung right
-    100, 0, 0,
-    100, 30, 0,
-    100, 30, 30,
-    100, 0, 0,
-    100, 30, 30,
-    100, 0, 30,
-
-    // under top rung
-    30, 30, 0,
-    30, 30, 30,
-    100, 30, 30,
-    30, 30, 0,
-    100, 30, 30,
-    100, 30, 0,
-
-    // between top rung and middle
-    30, 30, 0,
-    30, 30, 30,
-    30, 60, 30,
-    30, 30, 0,
-    30, 60, 30,
-    30, 60, 0,
-
-    // top of middle rung
-    30, 60, 0,
-    30, 60, 30,
-    67, 60, 30,
-    30, 60, 0,
-    67, 60, 30,
-    67, 60, 0,
-
-    // right of middle rung
-    67, 60, 0,
-    67, 60, 30,
-    67, 90, 30,
-    67, 60, 0,
-    67, 90, 30,
-    67, 90, 0,
-
-    // bottom of middle rung.
-    30, 90, 0,
-    30, 90, 30,
-    67, 90, 30,
-    30, 90, 0,
-    67, 90, 30,
-    67, 90, 0,
-
-    // right of bottom
-    30, 90, 0,
-    30, 90, 30,
-    30, 150, 30,
-    30, 90, 0,
-    30, 150, 30,
-    30, 150, 0,
-
-    // bottom
-    0, 150, 0,
-    0, 150, 30,
-    30, 150, 30,
-    0, 150, 0,
-    30, 150, 30,
-    30, 150, 0,
-
-    // left side
-    0, 0, 0,
-    0, 0, 30,
-    0, 150, 30,
-    0, 0, 0,
-    0, 150, 30,
-    0, 150, 0,
-  ]);
-  const basicObjTransform = transform(
-    vec3(0, 0, -50),
-    vec3(radFromDeg(0), radFromDeg(0), radFromDeg(0)),
-    vec3(0.2, 0.2, 0.2),
+  const mainCameraEntity = cameraEntity(
+    nextId(),
+    transform(vec3(0, 0, 0), vec3(radFromDeg(0), radFromDeg(0), radFromDeg(0)), vec3(1, 1, 1)),
+    perspectiveProjection(0.1, 50000, radFromDeg(90), gl.canvas.width / gl.canvas.height),
   );
-  storageSetMut(state.store.meshes, basicObjId, basicObjMesh);
-  storageSetMut(state.store.transforms, basicObjId, basicObjTransform);
+
+  state.drawSystem.activeCameraId = mainCameraEntity.id;
+  state.entities.set(mainCameraEntity.id, mainCameraEntity);
+};
+
+export const initBasicObjMut = (state: State): void => {
+  const basicObjEntity = simpleObjectEntity(
+    nextId(),
+    transform(vec3(0, 0, -50), vec3(radFromDeg(0), radFromDeg(0), radFromDeg(0)), vec3(0.2, 0.2, 0.2)),
+    // prettier-ignore
+    mesh([
+      // left column front
+      0, 0, 0,
+      30, 0, 0,
+      0, 150, 0,
+      0, 150, 0,
+      30, 0, 0,
+      30, 150, 0,
+
+      // top rung front
+      30, 0, 0,
+      100, 0, 0,
+      30, 30, 0,
+      30, 30, 0,
+      100, 0, 0,
+      100, 30, 0,
+
+      // middle rung front
+      30, 60, 0,
+      67, 60, 0,
+      30, 90, 0,
+      30, 90, 0,
+      67, 60, 0,
+      67, 90, 0,
+
+      // left column back
+      0, 0, 30,
+      30, 0, 30,
+      0, 150, 30,
+      0, 150, 30,
+      30, 0, 30,
+      30, 150, 30,
+
+      // top rung back
+      30, 0, 30,
+      100, 0, 30,
+      30, 30, 30,
+      30, 30, 30,
+      100, 0, 30,
+      100, 30, 30,
+
+      // middle rung back
+      30, 60, 30,
+      67, 60, 30,
+      30, 90, 30,
+      30, 90, 30,
+      67, 60, 30,
+      67, 90, 30,
+
+      // top
+      0, 0, 0,
+      100, 0, 0,
+      100, 0, 30,
+      0, 0, 0,
+      100, 0, 30,
+      0, 0, 30,
+
+      // top rung right
+      100, 0, 0,
+      100, 30, 0,
+      100, 30, 30,
+      100, 0, 0,
+      100, 30, 30,
+      100, 0, 30,
+
+      // under top rung
+      30, 30, 0,
+      30, 30, 30,
+      100, 30, 30,
+      30, 30, 0,
+      100, 30, 30,
+      100, 30, 0,
+
+      // between top rung and middle
+      30, 30, 0,
+      30, 30, 30,
+      30, 60, 30,
+      30, 30, 0,
+      30, 60, 30,
+      30, 60, 0,
+
+      // top of middle rung
+      30, 60, 0,
+      30, 60, 30,
+      67, 60, 30,
+      30, 60, 0,
+      67, 60, 30,
+      67, 60, 0,
+
+      // right of middle rung
+      67, 60, 0,
+      67, 60, 30,
+      67, 90, 30,
+      67, 60, 0,
+      67, 90, 30,
+      67, 90, 0,
+
+      // bottom of middle rung.
+      30, 90, 0,
+      30, 90, 30,
+      67, 90, 30,
+      30, 90, 0,
+      67, 90, 30,
+      67, 90, 0,
+
+      // right of bottom
+      30, 90, 0,
+      30, 90, 30,
+      30, 150, 30,
+      30, 90, 0,
+      30, 150, 30,
+      30, 150, 0,
+
+      // bottom
+      0, 150, 0,
+      0, 150, 30,
+      30, 150, 30,
+      0, 150, 0,
+      30, 150, 30,
+      30, 150, 0,
+
+      // left side
+      0, 0, 0,
+      0, 0, 30,
+      0, 150, 30,
+      0, 0, 0,
+      0, 150, 30,
+      0, 150, 0,
+    ]),
+  );
+
+  state.entities.set(basicObjEntity.id, basicObjEntity);
 };

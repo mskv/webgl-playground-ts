@@ -1,29 +1,16 @@
-import { Mesh, PerspectiveProjection, Transform } from "./3d";
 import { DrawSystem, drawSystemInit, initBasicObjMut, initMainCameraMut } from "./drawSystem";
-import { Storage, storageInit } from "./storage";
+import { Entity, EntityId } from "./entity";
 
 export type State = {
-  store: Store;
+  entities: Map<EntityId, Entity>;
   drawSystem: DrawSystem;
 };
 
-type Store = {
-  transforms: Storage<Transform>;
-  meshes: Storage<Mesh>;
-  perspectiveProjections: Storage<PerspectiveProjection>;
-};
-
 export const stateInit = (canvas: HTMLCanvasElement): State => {
-  const store: Store = {
-    transforms: storageInit<Transform>(),
-    meshes: storageInit<Mesh>(),
-    perspectiveProjections: storageInit<PerspectiveProjection>(),
-  };
-
   const drawSystem = drawSystemInit(canvas);
 
   const state: State = {
-    store,
+    entities: new Map(),
     drawSystem,
   };
 

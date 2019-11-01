@@ -1,4 +1,25 @@
+import { EntityId, EntityKind } from "./entity";
 import { Mat4, mat4, mat4FromEulerRotation, mat4FromScaleVec, mat4FromTranslationVec, mat4Product, Vec3 } from "./math";
+
+// CameraEntity
+
+export class CameraEntity {
+  public readonly kind = EntityKind.Camera;
+  constructor(public id: EntityId, public transform: Transform, public projection: PerspectiveProjection) {}
+}
+
+export const cameraEntity = (id: EntityId, transform: Transform, projection: PerspectiveProjection) =>
+  new CameraEntity(id, transform, projection);
+
+// SimpleObjectEntity
+
+export class SimpleObjectEntity {
+  public readonly kind = EntityKind.SimpleObject;
+  constructor(public id: EntityId, public transform: Transform, public mesh: Mesh) {}
+}
+
+export const simpleObjectEntity = (id: EntityId, transform: Transform, mesh: Mesh) =>
+  new SimpleObjectEntity(id, transform, mesh);
 
 // Transform
 
