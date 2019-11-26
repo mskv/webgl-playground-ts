@@ -14,7 +14,11 @@ export const vec3Format = (v: Vec3): string =>
 `);
 export const vec3FromArray = (arr: number[]): Vec3 => vec3(arr[0], arr[1], arr[2]);
 export const vec3ToArray = (v: Vec3): number[] => [v.x, v.y, v.z];
+export const vec3Add = (v1: Vec3, v2: Vec3): Vec3 => vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
+export const vec3Sub = (v1: Vec3, v2: Vec3): Vec3 => vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 export const vec3Dot = (v1: Vec3, v2: Vec3): number => v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+export const vec3Cross = (v1: Vec3, v2: Vec3): Vec3 =>
+  vec3(v1.y * v2.z - v1.z * v2.y, v1.z * v2.x - v1.x * v2.z, v1.x * v2.y - v1.y * v2.x);
 export const vec3Transform = (m: Mat4, v: Vec3): Vec3 => {
   const e = m.elements,
     x = v.x,
@@ -32,6 +36,14 @@ export const vec3Transform = (m: Mat4, v: Vec3): Vec3 => {
     result.z = result.z / w;
     return result;
   }
+};
+
+export const vec3Magnitude = (v: Vec3): number => Math.sqrt(Math.pow(v.x, 2) + Math.pow(v.y, 2) + Math.pow(v.z, 2));
+
+export const vec3Normalize = (v: Vec3): Vec3 => {
+  const magnitude = vec3Magnitude(v);
+
+  return vec3(v.x / magnitude, v.y / magnitude, v.z / magnitude);
 };
 
 // Vec4

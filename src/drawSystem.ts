@@ -1,13 +1,5 @@
-import {
-  cameraEntity,
-  cubeMesh,
-  perspectiveProjection,
-  perspectiveProjectionMatrix,
-  simpleObjectEntity,
-  transform,
-  transformMatrix,
-} from "./3d";
-import { assertKind, EntityId, EntityKind, nextId, ofKindCurr } from "./entity";
+import { cubeMesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
+import { assertKind, cameraEntity, EntityId, EntityKind, nextId, ofKindCurr, simpleObjectEntity } from "./entity";
 import { mat4Inverse, mat4Product, radFromDeg, vec3 } from "./math";
 import { State } from "./state";
 import { assert, defined } from "./utils";
@@ -16,19 +8,25 @@ const vertexShaderSource = `#version 300 es
 uniform mat4 u_projection;
 
 in vec4 in_position;
+in vec3 in_normal;
+
+out vec3 v_colour;
 
 void main() {
   gl_Position = u_projection * in_position;
+  v_colour = in_normal;
 }
 `;
 
 const fragmentShaderSource = `#version 300 es
 precision mediump float;
 
+in vec3 v_colour;
+
 out vec4 out_color;
 
 void main() {
-  out_color = vec4(1, 0, 0, 1);
+  out_color = vec4(v_colour, 1.0);
 }
 `;
 
@@ -69,10 +67,13 @@ export const drawSystemRun = (state: State): void => {
 
   gl.useProgram(program);
   const positionBuffer = gl.createBuffer();
+  const normalBuffer = gl.createBuffer();
   const indexBuffer = gl.createBuffer();
   const uProjectionLocation = gl.getUniformLocation(program, "u_projection");
   const inPositionLocation = gl.getAttribLocation(program, "in_position");
+  const inNormalLocation = gl.getAttribLocation(program, "in_normal");
   gl.enableVertexAttribArray(inPositionLocation);
+  gl.enableVertexAttribArray(inNormalLocation);
 
   if (!defined(state.drawSystem.activeCameraId)) {
     return;
@@ -94,8 +95,12 @@ export const drawSystemRun = (state: State): void => {
 
   for (const simpleObject of simpleObjects) {
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.vertices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.positions), gl.STATIC_DRAW);
     gl.vertexAttribPointer(inPositionLocation, 3, gl.FLOAT, false, 0, 0);
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.normals), gl.STATIC_DRAW);
+    gl.vertexAttribPointer(inNormalLocation, 3, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(simpleObject.mesh.indices), gl.STATIC_DRAW);
