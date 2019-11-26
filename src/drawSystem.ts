@@ -26,7 +26,7 @@ in vec3 v_colour;
 out vec4 out_color;
 
 void main() {
-  out_color = vec4(v_colour, 1.0);
+  out_color = vec4(normalize(v_colour + vec3(1.0, 1.0, 1.0)), 1.0);
 }
 `;
 
@@ -43,6 +43,8 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
   }
 
   resizeCanvas(gl.canvas as HTMLCanvasElement);
+
+  gl.enable(gl.DEPTH_TEST);
 
   const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
   const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
@@ -182,7 +184,7 @@ export const initMainCameraMut = (state: State): void => {
 export const initBasicObjMut = (state: State): void => {
   const basicObjEntity = simpleObjectEntity(
     nextId(),
-    transform(vec3(0, 0, -50), vec3(radFromDeg(15), radFromDeg(15), radFromDeg(0)), vec3(1, 1, 1)),
+    transform(vec3(0, 0, -50), vec3(radFromDeg(15), radFromDeg(15), radFromDeg(0)), vec3(2, 2, 2)),
     cubeMesh(10),
   );
 
