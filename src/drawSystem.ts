@@ -1,32 +1,38 @@
 import { cubeMesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
 import { assertKind, cameraEntity, EntityId, EntityKind, nextId, ofKindCurr, simpleObjectEntity } from "./entity";
-import { mat4Inverse, mat4Product, radFromDeg, vec3 } from "./math";
+import { mat4Inverse, mat4Product, mat4Transpose, radFromDeg, vec3, Vec3, vec3Normalize, vec3ToArray } from "./math";
 import { State } from "./state";
 import { assert, defined } from "./utils";
 
 const vertexShaderSource = `#version 300 es
-uniform mat4 u_projection;
+uniform mat4 u_modelToProjection;
+uniform mat4 u_modelToViewInverseTranspose;
 
 in vec4 in_position;
 in vec3 in_normal;
 
-out vec3 v_colour;
+out vec3 v_normal;
 
 void main() {
-  gl_Position = u_projection * in_position;
-  v_colour = in_normal;
+  gl_Position = u_modelToProjection * in_position;
+  v_normal = mat3(u_modelToViewInverseTranspose) * in_normal;
 }
 `;
 
 const fragmentShaderSource = `#version 300 es
 precision mediump float;
 
-in vec3 v_colour;
+uniform vec3 u_lightDirection;
+
+in vec3 v_normal;
 
 out vec4 out_color;
 
 void main() {
-  out_color = vec4(normalize(v_colour + vec3(1.0, 1.0, 1.0)), 1.0);
+  float lightContribution = dot(normalize(v_normal), -1.0 * u_lightDirection);
+
+  out_color = vec4(1.0, 0.0, 0.0, 1.0);
+  out_color.rgb *= lightContribution;
 }
 `;
 
@@ -34,6 +40,7 @@ export type DrawSystem = {
   gl: WebGL2RenderingContext;
   program: WebGLProgram;
   activeCameraId: EntityId | null;
+  lightDirection: Vec3;
 };
 
 export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
@@ -54,6 +61,7 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
     gl,
     program,
     activeCameraId: null,
+    lightDirection: vec3Normalize(vec3(1.0, -2.0, -1.0)),
   };
 };
 
@@ -71,7 +79,9 @@ export const drawSystemRun = (state: State): void => {
   const positionBuffer = gl.createBuffer();
   const normalBuffer = gl.createBuffer();
   const indexBuffer = gl.createBuffer();
-  const uProjectionLocation = gl.getUniformLocation(program, "u_projection");
+  const uModelToProjectionLocation = gl.getUniformLocation(program, "u_modelToProjection");
+  const uModelToViewInverseTransposeLocation = gl.getUniformLocation(program, "u_modelToViewInverseTranspose");
+  const uLightDirectionLocation = gl.getUniformLocation(program, "u_lightDirection");
   const inPositionLocation = gl.getAttribLocation(program, "in_position");
   const inNormalLocation = gl.getAttribLocation(program, "in_normal");
   gl.enableVertexAttribArray(inPositionLocation);
@@ -86,11 +96,8 @@ export const drawSystemRun = (state: State): void => {
     return;
   }
 
-  const worldToCameraSpace = mat4Inverse(transformMatrix(activeCameraEntity.transform));
-  const worldToProjectionSpace = mat4Product(
-    perspectiveProjectionMatrix(activeCameraEntity.projection),
-    worldToCameraSpace,
-  );
+  const worldToView = mat4Inverse(transformMatrix(activeCameraEntity.transform));
+  const viewToProjection = perspectiveProjectionMatrix(activeCameraEntity.projection);
 
   const entities = Array.from(state.entities.values());
   const simpleObjects = entities.filter(ofKindCurr(EntityKind.SimpleObject));
@@ -107,9 +114,14 @@ export const drawSystemRun = (state: State): void => {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(simpleObject.mesh.indices), gl.STATIC_DRAW);
 
-    const meshToWorldSpace = transformMatrix(simpleObject.transform);
-    const meshToProjectionSpace = mat4Product(worldToProjectionSpace, meshToWorldSpace);
-    gl.uniformMatrix4fv(uProjectionLocation, false, meshToProjectionSpace.elements);
+    const modelToWorld = transformMatrix(simpleObject.transform);
+    const modelToView = mat4Product(worldToView, modelToWorld);
+    const modelToProjection = mat4Product(viewToProjection, modelToView);
+    const modelToViewInverseTranspose = mat4Transpose(mat4Inverse(modelToView));
+
+    gl.uniformMatrix4fv(uModelToProjectionLocation, false, modelToProjection.elements);
+    gl.uniformMatrix4fv(uModelToViewInverseTransposeLocation, false, modelToViewInverseTranspose.elements);
+    gl.uniform3fv(uLightDirectionLocation, vec3ToArray(state.drawSystem.lightDirection));
 
     gl.drawElements(gl.TRIANGLES, simpleObject.mesh.indices.length, gl.UNSIGNED_SHORT, 0);
   }
@@ -173,7 +185,7 @@ export const initMainCameraMut = (state: State): void => {
 
   const mainCameraEntity = cameraEntity(
     nextId(),
-    transform(vec3(0, 0, 0), vec3(radFromDeg(0), radFromDeg(0), radFromDeg(0)), vec3(1, 1, 1)),
+    transform(vec3(-10, -15, 0), vec3(radFromDeg(0), radFromDeg(-10), radFromDeg(0)), vec3(1, 1, 1)),
     perspectiveProjection(0.1, 50000, radFromDeg(90), gl.canvas.width / gl.canvas.height),
   );
 
@@ -184,7 +196,7 @@ export const initMainCameraMut = (state: State): void => {
 export const initBasicObjMut = (state: State): void => {
   const basicObjEntity = simpleObjectEntity(
     nextId(),
-    transform(vec3(0, 0, -50), vec3(radFromDeg(15), radFromDeg(15), radFromDeg(0)), vec3(2, 2, 2)),
+    transform(vec3(0, 0, -50), vec3(radFromDeg(45), radFromDeg(0), radFromDeg(0)), vec3(2, 2, 2)),
     cubeMesh(10),
   );
 
