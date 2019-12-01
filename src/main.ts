@@ -1,5 +1,13 @@
 import { drawSystemRun } from "./drawSystem";
-import { stateInit } from "./state";
+import { State, stateInit } from "./state";
+
+let state: State;
+
+const loop = (time: number): void => {
+  drawSystemRun(state, time);
+
+  requestAnimationFrame(loop);
+};
 
 export const main = () => {
   const canvas = document.getElementById("canvas") as HTMLCanvasElement;
@@ -7,7 +15,7 @@ export const main = () => {
     throw new Error("Missing canvas element");
   }
 
-  const state = stateInit(canvas);
+  state = stateInit(canvas);
 
-  drawSystemRun(state);
+  requestAnimationFrame(loop);
 };

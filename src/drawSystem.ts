@@ -1,5 +1,14 @@
 import { cubeMesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
-import { assertKind, cameraEntity, EntityId, EntityKind, nextId, ofKindCurr, simpleObjectEntity } from "./entity";
+import {
+  assertKind,
+  cameraEntity,
+  CameraEntity,
+  EntityId,
+  EntityKind,
+  nextId,
+  ofKindCurr,
+  simpleObjectEntity,
+} from "./entity";
 import { mat4Inverse, mat4Product, mat4Transpose, radFromDeg, vec3, Vec3, vec3Normalize } from "./math";
 import {
   Program,
@@ -42,15 +51,10 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
   };
 };
 
-export const drawSystemRun = (state: State): void => {
+export const drawSystemRun = (state: State, _time: number): void => {
   const gl = state.drawSystem.gl,
     canvas = gl.canvas as HTMLCanvasElement,
     program = state.drawSystem.program;
-
-  resizeCanvas(canvas);
-  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-  gl.clearColor(0, 0, 0, 0);
-  gl.clear(gl.COLOR_BUFFER_BIT);
 
   if (!defined(state.drawSystem.activeCameraId)) {
     return;
@@ -60,6 +64,13 @@ export const drawSystemRun = (state: State): void => {
   if (!assert(activeCameraEntity, "Missing active camera") || !assertKind(EntityKind.Camera, activeCameraEntity)) {
     return;
   }
+
+  resizeCanvas(canvas);
+  gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+  gl.clearColor(0, 0, 0, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+
+  updateCameraProjectionMatrixMut(activeCameraEntity, canvas);
 
   const worldToView = mat4Inverse(transformMatrix(activeCameraEntity.transform));
   const viewToProjection = perspectiveProjectionMatrix(activeCameraEntity.projection);
@@ -95,6 +106,15 @@ const resizeCanvas = (canvas: HTMLCanvasElement): void => {
     canvas.width = displayWidth;
     canvas.height = displayHeight;
   }
+};
+
+const updateCameraProjectionMatrixMut = (camera: CameraEntity, canvas: HTMLCanvasElement): void => {
+  camera.projection = perspectiveProjection(
+    camera.projection.nearZ,
+    camera.projection.farZ,
+    camera.projection.fovY,
+    canvas.width / canvas.height,
+  );
 };
 
 export const initMainCameraMut = (state: State): void => {
