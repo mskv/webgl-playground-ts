@@ -1,44 +1,23 @@
 import { cubeMesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
 import { assertKind, cameraEntity, EntityId, EntityKind, nextId, ofKindCurr, simpleObjectEntity } from "./entity";
-import { mat4Inverse, mat4Product, mat4Transpose, radFromDeg, vec3, Vec3, vec3Normalize, vec3ToArray } from "./math";
+import { mat4Inverse, mat4Product, mat4Transpose, radFromDeg, vec3, Vec3, vec3Normalize } from "./math";
+import {
+  Program,
+  programInit,
+  programSetAttributeNormal,
+  programSetAttributePosition,
+  programSetIndices,
+  programSetUniformLightDirection,
+  programSetUniformModelToProjection,
+  programSetUniformModelToViewInverseTranspose,
+  programUse,
+} from "./program";
 import { State } from "./state";
 import { assert, defined } from "./utils";
 
-const vertexShaderSource = `#version 300 es
-uniform mat4 u_modelToProjection;
-uniform mat4 u_modelToViewInverseTranspose;
-
-in vec4 in_position;
-in vec3 in_normal;
-
-out vec3 v_normal;
-
-void main() {
-  gl_Position = u_modelToProjection * in_position;
-  v_normal = mat3(u_modelToViewInverseTranspose) * in_normal;
-}
-`;
-
-const fragmentShaderSource = `#version 300 es
-precision mediump float;
-
-uniform vec3 u_lightDirection;
-
-in vec3 v_normal;
-
-out vec4 out_color;
-
-void main() {
-  float lightContribution = dot(normalize(v_normal), -1.0 * u_lightDirection);
-
-  out_color = vec4(1.0, 0.0, 0.0, 1.0);
-  out_color.rgb *= lightContribution;
-}
-`;
-
 export type DrawSystem = {
   gl: WebGL2RenderingContext;
-  program: WebGLProgram;
+  program: Program;
   activeCameraId: EntityId | null;
   lightDirection: Vec3;
 };
@@ -53,9 +32,7 @@ export const drawSystemInit = (canvas: HTMLCanvasElement): DrawSystem => {
 
   gl.enable(gl.DEPTH_TEST);
 
-  const vertexShader = createShader(gl, gl.VERTEX_SHADER, vertexShaderSource);
-  const fragmentShader = createShader(gl, gl.FRAGMENT_SHADER, fragmentShaderSource);
-  const program = createProgram(gl, vertexShader, fragmentShader);
+  const program = programInit(gl);
 
   return {
     gl,
@@ -75,18 +52,6 @@ export const drawSystemRun = (state: State): void => {
   gl.clearColor(0, 0, 0, 0);
   gl.clear(gl.COLOR_BUFFER_BIT);
 
-  gl.useProgram(program);
-  const positionBuffer = gl.createBuffer();
-  const normalBuffer = gl.createBuffer();
-  const indexBuffer = gl.createBuffer();
-  const uModelToProjectionLocation = gl.getUniformLocation(program, "u_modelToProjection");
-  const uModelToViewInverseTransposeLocation = gl.getUniformLocation(program, "u_modelToViewInverseTranspose");
-  const uLightDirectionLocation = gl.getUniformLocation(program, "u_lightDirection");
-  const inPositionLocation = gl.getAttribLocation(program, "in_position");
-  const inNormalLocation = gl.getAttribLocation(program, "in_normal");
-  gl.enableVertexAttribArray(inPositionLocation);
-  gl.enableVertexAttribArray(inNormalLocation);
-
   if (!defined(state.drawSystem.activeCameraId)) {
     return;
   }
@@ -103,70 +68,22 @@ export const drawSystemRun = (state: State): void => {
   const simpleObjects = entities.filter(ofKindCurr(EntityKind.SimpleObject));
 
   for (const simpleObject of simpleObjects) {
-    gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.positions), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(inPositionLocation, 3, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ARRAY_BUFFER, normalBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(simpleObject.mesh.normals), gl.STATIC_DRAW);
-    gl.vertexAttribPointer(inNormalLocation, 3, gl.FLOAT, false, 0, 0);
-
-    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-    gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(simpleObject.mesh.indices), gl.STATIC_DRAW);
+    programSetAttributePosition(program, simpleObject.mesh.positions);
+    programSetAttributeNormal(program, simpleObject.mesh.normals);
+    programSetIndices(program, simpleObject.mesh.indices);
 
     const modelToWorld = transformMatrix(simpleObject.transform);
     const modelToView = mat4Product(worldToView, modelToWorld);
     const modelToProjection = mat4Product(viewToProjection, modelToView);
     const modelToViewInverseTranspose = mat4Transpose(mat4Inverse(modelToView));
 
-    gl.uniformMatrix4fv(uModelToProjectionLocation, false, modelToProjection.elements);
-    gl.uniformMatrix4fv(uModelToViewInverseTransposeLocation, false, modelToViewInverseTranspose.elements);
-    gl.uniform3fv(uLightDirectionLocation, vec3ToArray(state.drawSystem.lightDirection));
+    programUse(program);
+
+    programSetUniformModelToProjection(program, modelToProjection);
+    programSetUniformModelToViewInverseTranspose(program, modelToViewInverseTranspose);
+    programSetUniformLightDirection(program, state.drawSystem.lightDirection);
 
     gl.drawElements(gl.TRIANGLES, simpleObject.mesh.indices.length, gl.UNSIGNED_SHORT, 0);
-  }
-};
-
-const createProgram = (
-  gl: WebGL2RenderingContext,
-  vertexShader: WebGLShader,
-  fragmentShader: WebGLShader,
-): WebGLProgram => {
-  const program = gl.createProgram();
-  if (!program) {
-    throw new Error("Unable to create program");
-  }
-
-  gl.attachShader(program, vertexShader);
-  gl.attachShader(program, fragmentShader);
-  gl.linkProgram(program);
-  const linkStatus = gl.getProgramParameter(program, gl.LINK_STATUS);
-  if (linkStatus) {
-    return program;
-  } else {
-    // tslint:disable-next-line:no-console
-    console.log(gl.getProgramInfoLog(program));
-    gl.deleteProgram(program);
-    throw new Error("Unable to link program");
-  }
-};
-
-const createShader = (gl: WebGL2RenderingContext, type: GLenum, source: string): WebGLShader => {
-  const shader = gl.createShader(type);
-  if (!shader) {
-    throw new Error("Unable to create shader");
-  }
-
-  gl.shaderSource(shader, source);
-  gl.compileShader(shader);
-  const compileStatus = gl.getShaderParameter(shader, gl.COMPILE_STATUS);
-  if (compileStatus) {
-    return shader;
-  } else {
-    // tslint:disable-next-line:no-console
-    console.log(gl.getShaderInfoLog(shader));
-    gl.deleteShader(shader);
-    throw new Error("Unable to compile shader");
   }
 };
 
