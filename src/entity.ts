@@ -1,4 +1,4 @@
-import { Mesh, PerspectiveProjection, Transform } from "./3d";
+import { Mesh, Movement, PerspectiveProjection, Transform } from "./3d";
 
 export type EntityId = number;
 
@@ -41,8 +41,8 @@ export const cameraEntity = (id: EntityId, transform: Transform, projection: Per
 
 export class SimpleObjectEntity {
   public readonly kind = EntityKind.SimpleObject;
-  constructor(public id: EntityId, public transform: Transform, public mesh: Mesh) {}
+  constructor(public id: EntityId, public transform: Transform, public movement: Movement, public mesh: Mesh) {}
 }
 
-export const simpleObjectEntity = (id: EntityId, transform: Transform, mesh: Mesh) =>
-  new SimpleObjectEntity(id, transform, mesh);
+export const simpleObjectEntity = (id: EntityId, transform: Transform, movement: Movement, mesh: Mesh) =>
+  new SimpleObjectEntity(id, transform, movement, mesh);

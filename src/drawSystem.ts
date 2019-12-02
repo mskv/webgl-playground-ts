@@ -1,4 +1,11 @@
-import { cubeMesh, perspectiveProjection, perspectiveProjectionMatrix, transform, transformMatrix } from "./3d";
+import {
+  cubeMesh,
+  movement,
+  perspectiveProjection,
+  perspectiveProjectionMatrix,
+  transform,
+  transformMatrix,
+} from "./3d";
 import {
   assertKind,
   cameraEntity,
@@ -134,6 +141,7 @@ export const initBasicObjMut = (state: State): void => {
   const basicObjEntity = simpleObjectEntity(
     nextId(),
     transform(vec3(0, 0, -50), vec3(radFromDeg(45), radFromDeg(0), radFromDeg(0)), vec3(2, 2, 2)),
+    movement(vec3(0, 0, 0), vec3(0, 0, 0), vec3(0, 2, 1), vec3(0, 0, 0)),
     cubeMesh(10),
   );
 

@@ -14,6 +14,7 @@ export const vec3Format = (v: Vec3): string =>
 `);
 export const vec3FromArray = (arr: number[]): Vec3 => vec3(arr[0], arr[1], arr[2]);
 export const vec3ToArray = (v: Vec3): number[] => [v.x, v.y, v.z];
+export const vec3MulScalar = (v1: Vec3, s: number): Vec3 => vec3(v1.x * s, v1.y * s, v1.z * s);
 export const vec3Add = (v1: Vec3, v2: Vec3): Vec3 => vec3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
 export const vec3Sub = (v1: Vec3, v2: Vec3): Vec3 => vec3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
 export const vec3Dot = (v1: Vec3, v2: Vec3): number => v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;

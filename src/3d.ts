@@ -29,6 +29,15 @@ export const transformMatrix = (transform: Transform): Mat4 => {
   return mat4Product(translation, mat4Product(rotation, scale));
 };
 
+// Movement
+
+export class Movement {
+  constructor(public speed: Vec3, public dSpeed: Vec3, public rotation: Vec3, public dRotation: Vec3) {}
+}
+
+export const movement = (speed: Vec3, dSpeed: Vec3, rotation: Vec3, dRotation: Vec3) =>
+  new Movement(speed, dSpeed, rotation, dRotation);
+
 // PerspectiveProjection
 
 export class PerspectiveProjection {
