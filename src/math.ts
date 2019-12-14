@@ -157,6 +157,35 @@ export const mat4FromEulerRotation = (euler: Vec3): Mat4 => {
   ]);
 };
 
+export const mat4FromQuat = (q: Vec4): Mat4 => {
+  const x = q.x,
+    y = q.y,
+    z = q.z,
+    w = q.w,
+    x2 = Math.pow(x, 2),
+    y2 = Math.pow(y, 2),
+    z2 = Math.pow(z, 2);
+
+  return mat4([
+    1 - 2 * y2 - 2 * z2,
+    2 * x * y + 2 * w * z,
+    2 * x * z - 2 * w * y,
+    0,
+    2 * x * y - 2 * w * z,
+    1 - 2 * x2 - 2 * z2,
+    2 * y * z + 2 * w * x,
+    0,
+    2 * x * z + 2 * w * y,
+    2 * y * z - 2 * w * x,
+    1 - 2 * x2 - 2 * y2,
+    0,
+    0,
+    0,
+    0,
+    1,
+  ]);
+};
+
 export const mat4FromTranslationVec = (translation: Vec3): Mat4 => {
   const x = translation.x,
     y = translation.y,
@@ -219,6 +248,33 @@ export const mat4Inverse = (m: Mat4): Mat4 => {
     (e[4] * e[9] * e[2] - e[8] * e[5] * e[2] + e[8] * e[1] * e[6] - e[0] * e[9] * e[6] - e[4] * e[1] * e[10] + e[0] * e[5] * e[10]) * detInv,
   ]);
   // tslint:enable:max-line-length
+};
+
+// Quaternion
+export const quat = (axis: Vec3, angle: number): Vec4 => {
+  const axisNormalized = vec3Normalize(axis);
+  const halfAngle = angle / 2;
+  const halfSin = Math.sin(halfAngle);
+  const halfCos = Math.cos(halfAngle);
+  return vec4(axisNormalized.x * halfSin, axisNormalized.y * halfSin, axisNormalized.z * halfSin, halfCos);
+};
+
+export const quatProduct = (q1: Vec4, q2: Vec4): Vec4 => {
+  const x1 = q1.x,
+    y1 = q1.y,
+    z1 = q1.z,
+    w1 = q1.w,
+    x2 = q2.x,
+    y2 = q2.y,
+    z2 = q2.z,
+    w2 = q2.w;
+
+  return vec4(
+    w1 * x2 + x1 * w2 + y1 * z2 - z1 * y2,
+    w1 * y2 - x1 * z2 + y1 * w2 + z1 * x2,
+    w1 * z2 + x1 * y2 - y1 * x2 + z1 * w2,
+    w1 * w2 - x1 * x2 - y1 * y2 - z1 * z2,
+  );
 };
 
 // Misc

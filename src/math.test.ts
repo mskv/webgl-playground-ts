@@ -5,6 +5,9 @@ import {
   mat4FromScaleVec,
   mat4FromTranslationVec,
   mat4Product,
+  quat,
+  quatProduct,
+  radFromDeg,
   vec3,
   vec4,
   vec4Format,
@@ -91,4 +94,12 @@ test("transformation", () => {
   const transformed = vec4Transform(transformation, vec);
 
   expect(vec4Format(transformed)).toEqual(vec4Format(expected));
+});
+
+test("quatProduct", () => {
+  const expected = quat(vec3(1, 1, 1), radFromDeg(120));
+  const q1 = quat(vec3(1, 0, 0), radFromDeg(90));
+  const q2 = quat(vec3(0, 1, 0), radFromDeg(90));
+  const prod = quatProduct(q1, q2);
+  expect(vec4Format(prod)).toEqual(vec4Format(expected));
 });
